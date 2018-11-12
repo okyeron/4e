@@ -1,6 +1,6 @@
 # 4e
 
-4 encoders clones the functionality of the monome arc, giving you 4 encoders with push buttons to control monome hardware such as norns, ansible, and the trilogy modules. It's based on an inexpensive Teensy microcontroller plus encoders and a 1.2" OLED display to provide feedback. The display currently shows the arc led ring information as four 64-segment "bars" instead.
+4e clones the functionality of the monome arc, giving you 4 encoders with push buttons to control monome hardware such as norns, ansible, and the trilogy modules. It's based on an inexpensive Teensy microcontroller plus encoders and a 1.2" OLED display to provide feedback. The display currently shows the arc led ring information as four 64-segment "bars" instead.
 
 ## usb_names
 
