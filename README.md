@@ -6,4 +6,4 @@
 
 The companion file `usb_names.c` allows you to customize some variables for how the device shows up on other computers/devices. This is necessary for the device to be recognized by some other monome devices.
 
-You should modify SERIAL_NUM numbers to something unique, but do not change the "m" in the first position of the array: `{'m','1','2','3','4','5','6','7'}`
+You should modify SERIAL_NUM numbers to something unique, but do not change the "m" in the first position of the array: `{'m','1','2','3','4','5','6','7'}`. Do not change the MANUFACTURER_NAME.
