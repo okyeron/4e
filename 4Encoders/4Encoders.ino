@@ -75,9 +75,6 @@ int arcValues[MONOMEARCENCOUDERCOUNT];
   #define ENC8B 4   
 #endif
 
-bool isMonome = true;
-bool isMIDI = false;
-
 
 // i2c ADDR for oled diplays
 byte adr1 = (0x3D *2); //display is 0x3D
@@ -123,7 +120,6 @@ Encoder *encoders[numberEncoders] {
   &enc01,  &enc02,  &enc03,  &enc04, &enc05,  &enc06,  &enc07,  &enc08
  };
 
-
  // BUTTONS (pin#, debounce time in milliseconds)
 Bounce button0 = Bounce(PIN_1, 10);
 Bounce button1 = Bounce(PIN_2, 10);
@@ -142,6 +138,7 @@ Bounce *buttons[numberButtons] {
 // SET CC NUMBERS FOR EACH ENCODER
 int encoderCCs[]{ 16, 17, 18, 19, 20, 21, 22, 23 };
 
+// ENCODER SETUP
 static uint8_t led_array[numberEncoders][64];
 
 long knobs[numberEncoders] {};
@@ -189,6 +186,7 @@ void DrawBox2(uint8_t x, uint8_t y, uint8_t w, uint8_t h){
   u8g2_2.drawBox(x, y, w, h);
 }
 
+// AM I USING THIS?
 int encoderVelocity(int enc_id, int enc_val, int multiplier, int stepSize, int pauseLength) {
     int returnVal = 0;
     int changevalue = 1;
@@ -216,21 +214,20 @@ int encoderVelocity(int enc_id, int enc_val, int multiplier, int stepSize, int p
 
 // SETUP
 void setup() {
-  // setup buttons
-  pinMode(PIN_1, INPUT_PULLUP); //INPUT_PULLUP
-  pinMode(PIN_2, INPUT_PULLUP);
-  pinMode(PIN_3, INPUT_PULLUP);
-  pinMode(PIN_4, INPUT_PULLUP);
+	  // setup buttons
+	  pinMode(PIN_1, INPUT_PULLUP); //INPUT_PULLUP
+	  pinMode(PIN_2, INPUT_PULLUP);
+	  pinMode(PIN_3, INPUT_PULLUP);
+	  pinMode(PIN_4, INPUT_PULLUP);
   
-  pinMode(PIN_5, INPUT_PULLUP); //INPUT_PULLUP
-  pinMode(PIN_6, INPUT_PULLUP);
-  pinMode(PIN_7, INPUT_PULLUP);
-  pinMode(PIN_8, INPUT_PULLUP);
+	  pinMode(PIN_5, INPUT_PULLUP); //INPUT_PULLUP
+	  pinMode(PIN_6, INPUT_PULLUP);
+	  pinMode(PIN_7, INPUT_PULLUP);
+	  pinMode(PIN_8, INPUT_PULLUP);
 
 	Serial.begin(115200);
 //  Serial4.begin(115200); // send to serial 4 pins for debug
   
-
     // USB MIDI
     usbMIDI.setHandleNoteOn(myNoteOn);
     usbMIDI.setHandleNoteOff(myNoteOff);
