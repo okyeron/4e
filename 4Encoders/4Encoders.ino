@@ -1,7 +1,12 @@
-/* Encoder Library - TwoKnobs Example
- * http://www.pjrc.com/teensy/td_libs_Encoder.html
- *
- * This example code is in the public domain.
+/* 4 Encoders
+ *  
+ *  hackable encoder controller
+ *  first version desiged to emulate the monome arc 
+ *  outputs serial monome protocol for arc encoders/buttons/led-rings  https://monome.org/docs/serial.txt
+ *  use usb_names.c file to change emulated monome serial number
+ *  
+ *  or use for MIDI stuff like CC's 
+ *  
  */
 
 #include <Arduino.h>
@@ -17,45 +22,112 @@
 #include <i2c_t3.h>
 #endif
 
-bool isMIDI = false;
-bool isMonome = true;
+// 1x8 or 2x4 expander
+bool VERTICAL = false; // 2x4 configuration
 
+
+#define PIN_1 15  // 0
+#define PIN_2 12  // 3
+#define PIN_3 9  // 20
+#define PIN_4 6  // 33
+#define PIN_5 3
+#define PIN_6 0
+#define PIN_7 20
+#define PIN_8 33
+
+// ENCODER ASSIGNMENTS
+
+// swap A/B to reverse encoder direction
+#define ENC1A 16  // 5
+#define ENC1B 17  // 4
+#define ENC2A 30  // 2
+#define ENC2B 14  // 1
+#define ENC3A 10  // 22
+#define ENC3B 11  // 21
+#define ENC4A 7   // 31
+#define ENC4B 8   // 32
+
+#if VERTICAL // 1x8 layout
+  #define ENC5A 5  // 5
+  #define ENC5B 4  // 4
+  #define ENC6A 2  // 2
+  #define ENC6B 1  // 1
+  #define ENC7A 22  // 22
+  #define ENC7B 21  // 21
+  #define ENC8A 31   // 31
+  #define ENC8B 32   // 32
+#else  // 2x4
+  #define ENC5A 31  
+  #define ENC5B 32 
+  #define ENC6A 22 
+  #define ENC6B 21 
+  #define ENC7A 2 
+  #define ENC7B 1 
+  #define ENC8A 5  
+  #define ENC8B 4   
+#endif
+
+bool isMonome = true;
+bool isMIDI = false;
+
+byte adr1 = (0x3D *2); //display is 0x3D
+byte adr2 = (0x3C *2); //display 2 is 0x3C
 // U8g2 Contructor
 U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
+// additional setup for 2 displays
+#if VERTICAL // 1x8 layout
+  U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2_2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE); // U8G2_R2 is 180 degree rotation
+#else // 2x4 layout
+  U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2_2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); // U8G2_R0 is normal rotation
+#endif
+//U8G2 *u8g2_array[] =  {&u8g2, &u8g2_2};
+
+
 // MIDI CHANNEL
 const byte midiChannel = 1;       // The MIDI Channel to send the commands over
-
 // MIDI_CREATE_DEFAULT_INSTANCE();
 
-String deviceID  = "arc";
+// DONT CHANGE THIS
+String deviceID  = "monome arc";
 
 // HOW MANY ENCODERS?
-const byte numberEncoders = 4;   // The number of encoders
+const byte numberEncoders = 8;   // The number of encoders
 const byte numberButtons = numberEncoders;   // The number of buttons
 
 // ENCODER PIN SETUP - use teensy digital pin numbers
 // Avoid using pins with LEDs attached
 // (pin1, pin2,);
-Encoder enc01(2, 3);
-Encoder enc02(5, 6);
-Encoder enc03(8, 9);
-Encoder enc04(11, 12);
+Encoder enc01(ENC1A, ENC1B);
+Encoder enc02(ENC2A, ENC2B);
+Encoder enc03(ENC3A, ENC3B);
+Encoder enc04(ENC4A, ENC4B);
+
+Encoder enc08(ENC5A, ENC5B);
+Encoder enc07(ENC6A, ENC6B);
+Encoder enc06(ENC7A, ENC7B);
+Encoder enc05(ENC8A, ENC8B);
 
 Encoder *encoders[numberEncoders] {
-  &enc01,  &enc02,  &enc03,  &enc04
+  &enc01,  &enc02,  &enc03,  &enc04, &enc05,  &enc06,  &enc07,  &enc08
  };
 
- // BUTTONS
-Bounce button0 = Bounce(1, 10);
-Bounce button1 = Bounce(4, 10);
-Bounce button2 = Bounce(7, 10);
-Bounce button3 = Bounce(10, 10);
+
+ // BUTTONS (pin#, debounce time in milliseconds)
+Bounce button0 = Bounce(PIN_1, 10);
+Bounce button1 = Bounce(PIN_2, 10);
+Bounce button2 = Bounce(PIN_3, 10);
+Bounce button3 = Bounce(PIN_4, 10);
+Bounce button4 = Bounce(PIN_8, 10);
+Bounce button5 = Bounce(PIN_7, 10);
+Bounce button6 = Bounce(PIN_6, 10);
+Bounce button7 = Bounce(PIN_5, 10);
 
 Bounce *buttons[numberButtons] {
-  &button0,  &button1,  &button2,  &button3
+  &button0,  &button1,  &button2,  &button3, &button4,  &button5,  &button6,  &button7
  };
 
+//MIDI ONLY
 // SET CC NUMBERS FOR EACH ENCODER
 int encoderCCs[] {16,17,18,19};
 
@@ -63,14 +135,14 @@ static uint8_t led_array[numberEncoders][64];
 
 long knobs[numberEncoders] {};
 long buttonval[numberButtons] {};
-long encposition[]={-999, -999, -999, -999};
+long encposition[]={-999, -999, -999, -999,-999, -999, -999, -999};
 
 int _multiplier = 5;
 int _stepSize = 2;
 unsigned long _pauseLength = 1000;
-int _lastENCread[numberEncoders] {0,0,0,0};
-int _ENCcounter[numberEncoders] {0,0,0,0};
-unsigned long _lastENCreadTime[numberEncoders] = {millis(),millis(),millis(),millis()};
+int _lastENCread[numberEncoders] {0,0,0,0,0,0,0,0};
+int _ENCcounter[numberEncoders] {0,0,0,0,0,0,0,0};
+unsigned long _lastENCreadTime[numberEncoders] = {millis(),millis(),millis(),millis(),millis(),millis(),millis(),millis()};
 
 // MATH FOR GUAGES
 float gs_rad; //stores angle from where to start in radinats
@@ -99,8 +171,11 @@ void Drawgauge(int x, byte y, byte r, byte p, int v, int minVal, int maxVal) {
 void Drawbutton(int dx,byte dy,byte brad, int v){
   u8g2.drawCircle(dx,dy,brad,U8G2_DRAW_ALL );
 }
-void DrawBox(uint8_t x, uint8_t y, uint8_t w, uint8_t h){
+void DrawBox1(uint8_t x, uint8_t y, uint8_t w, uint8_t h){
   u8g2.drawBox(x, y, w, h);
+}
+void DrawBox2(uint8_t x, uint8_t y, uint8_t w, uint8_t h){
+  u8g2_2.drawBox(x, y, w, h);
 }
 
 int encoderVelocity(int enc_id, int enc_val, int multiplier, int stepSize, int pauseLength) {
@@ -132,7 +207,7 @@ void writeInt(uint8_t value) {
 }
 uint8_t readInt() {
   uint8_t val = Serial.read();
-  //Serial2.write(val); // send to serial 2 pins for debug
+//  Serial4.write(val); // send to serial 4 pins for debug
   return val; 
 }
 
@@ -149,7 +224,7 @@ void processSerial() {
                                               // a = section (ie. system, key-grid, digital, encoder, led grid, tilt)
                                               // b = command (ie. query, enable, led, key, frame)
   
-  //Serial2.write(identifierSent);    // send to serial 2 pins for debug                  
+  //Serial4.write(identifierSent);    // send to serial 4 pins for debug                  
   
   // monome serial protocol documentation: https://monome.org/docs/serial.txt
   
@@ -219,7 +294,8 @@ void processSerial() {
       
       break;
 
-    // 0x5x are encoder
+    // 0x5x are encoder inputs // not doing anything here since we dont really need to update encoder position
+    
     case 0x50:    // /prefix/enc/delta n d
       //bytes: 3
       //structure: [0x50, n, d]
@@ -296,14 +372,14 @@ void processSerial() {
               led_array[readN][y] = (intensity >> 4 & 0x0F);
             }
             else {
-              //led_array[readN][y]=0;
+              led_array[readN][y]=0;
             }
           } else {                              
             if ((intensity & 0x0F) > 0 ) {      // odd bytes, use lower nybble
               led_array[readN][y] = (intensity & 0x0F);
             }
             else {
-              //led_array[readN][y]=0;
+              led_array[readN][y]=0;
             }
           }
       }
@@ -336,7 +412,6 @@ void processSerial() {
           led_array[readN][x] = readA;
         }
       }
-      
       //note:   set range x1-x2 (inclusive) to a. wrapping supported, ie. set range 60,4 would set values 60,61,62,63,0,1,2,3,4. 
       // always positive direction sweep. ie. 4,10 = 4,5,6,7,8,9,10 whereas 10,4 = 10,11,12,13...63,0,1,2,3,4 
      break;
@@ -348,15 +423,32 @@ void processSerial() {
 // SETUP
 void setup() {
   // setup buttons
-  pinMode(1, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);
-  pinMode(10, INPUT_PULLUP);
- 
+  pinMode(PIN_1, INPUT_PULLUP); //INPUT_PULLUP
+  pinMode(PIN_2, INPUT_PULLUP);
+  pinMode(PIN_3, INPUT_PULLUP);
+  pinMode(PIN_4, INPUT_PULLUP);
+  pinMode(PIN_5, INPUT_PULLUP); //INPUT_PULLUP
+  pinMode(PIN_6, INPUT_PULLUP);
+  pinMode(PIN_7, INPUT_PULLUP);
+  pinMode(PIN_8, INPUT_PULLUP);
+/*
+  pinMode(ENC1A,INPUT);
+  pinMode(ENC1B,INPUT);
+  pinMode(ENC2A,INPUT);
+  pinMode(ENC2B,INPUT);
+  pinMode(ENC3A,INPUT);
+  pinMode(ENC3B,INPUT);
+  pinMode(ENC4A,INPUT);
+  pinMode(ENC4B,INPUT);
+*/
   Serial.begin(115200);
+//  Serial4.begin(115200); // send to serial 4 pins for debug
+  
 //  MIDI.begin(midiChannel);
+  u8g2.setI2CAddress(adr1);
+  u8g2_2.setI2CAddress(adr2);
   u8g2.begin();
-  //u8g2.setAutoPageClear(0);
+  u8g2_2.begin();
   
   //Serial.println("Encoders:");
 
@@ -432,6 +524,7 @@ void loop() {
         if (encvalue != 0) {
           
           int thisknob = encoderVelocity(i, encvalue, _multiplier, _stepSize, _pauseLength);
+          // this function is crap?
           
           //knobs[i] = encvalue;
           //Serial.print("Enc ");
@@ -457,13 +550,13 @@ void loop() {
    // draw stuff to i2c display
     
     u8g2.firstPage(); do{
-     for (int j=0; j<numberEncoders; j++){ 
+     for (int j=0; j<4; j++){  // 1-4
         for (int q=0; q<64; q++){
           if (led_array[j][q] > 0){
             u8g2.setDrawColor(1);
-            DrawBox((q*2), (j*15)+1, 2, 15); // draw white box
+            DrawBox1((q*2), (j*15)+1, 2, 15); // draw white box
             u8g2.setDrawColor(2);
-            DrawBox((q*2), (j*15)+1, 2, 16-led_array[j][q]); //
+            DrawBox1((q*2), (j*15)+1, 2, 16-led_array[j][q]); //
             
             //led_array[j][q] = 0;          
           }
@@ -483,6 +576,21 @@ void loop() {
       //Drawgauge(cx*7,cy,radius,percent,constrain(knobs[3], 0, 127),0,127);
       
       } while ( u8g2.nextPage() );
+
+    u8g2_2.firstPage(); do{
+     for (int j=4; j<8; j++){  // 4-8
+        for (int q=0; q<64; q++){
+          if (led_array[j][q] > 0){
+            u8g2_2.setDrawColor(1);
+            DrawBox2((q*2), ((j-4)*15)+1, 2, 15); // draw white box
+            u8g2_2.setDrawColor(2);
+            DrawBox2((q*2), ((j-4)*15)+1, 2, 16-led_array[j][q]); //      
+          }
+        }
+        if (buttonval[j]){
+        }
+       }
+    } while ( u8g2_2.nextPage() );
       
 
    if (Serial.available() > 0) {

@@ -1,10 +1,10 @@
 #include "usb_names.h"
 
-#define PRODUCT_NAME      {'t','e','e','n','s','y','-','a','r','c'}
+#define PRODUCT_NAME      {'m','o','n','o','m','e',' ','a','r','c'}
 #define PRODUCT_NAME_LEN   10
 #define MANUFACTURER_NAME  {'m','o','n','o','m','e'}
 #define MANUFACTURER_NAME_LEN 6
-#define SERIAL_NUM  {'m','1','2','3','4','5','6','7'}
+#define SERIAL_NUM  {'m','2','2','8','9','4','9','0'} //2289490
 #define SERIAL_NUM_LEN 8
 
 struct usb_string_descriptor_struct usb_string_product_name = {
