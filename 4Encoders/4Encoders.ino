@@ -27,9 +27,10 @@
 // 1x8 or 2x4 expander
 bool VERTICAL = false; // 2x4 configuration
 
-#define MONOMEDEVICECOUNT 2
+#define MONOMEDEVICECOUNT 1
 #define MONOMEARCENCOUDERCOUNT 8
 
+MonomeSerial monomeDevices;
 elapsedMillis monomeRefresh;
 int arcValues[MONOMEARCENCOUDERCOUNT];
 
@@ -96,9 +97,6 @@ U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 const byte midiChannel = 1;       // The MIDI Channel to send the commands over
 // MIDI_CREATE_DEFAULT_INSTANCE();
 
-// DONT CHANGE THIS
-String deviceID  = "monome arc";
-
 // HOW MANY ENCODERS?
 const byte numberEncoders = 8;   // The number of encoders
 const byte numberButtons = numberEncoders;   // The number of buttons
@@ -139,7 +137,6 @@ Bounce *buttons[numberButtons] {
 int encoderCCs[]{ 16, 17, 18, 19, 20, 21, 22, 23 };
 
 // ENCODER SETUP
-static uint8_t led_array[numberEncoders][64];
 
 long knobs[numberEncoders] {};
 long buttonval[numberButtons] {};
@@ -253,7 +250,6 @@ void loop() {
     while (usbMIDI.read()) {
         // controllers must call .read() to keep the queue clear even if they
         // are not responding to MIDI
-        activity = true;
     }
 
 
@@ -286,53 +282,20 @@ void loop() {
   for (byte i = 0; i < numberEncoders; i++) {
     int encvalue = encoders[i]->read();    // read encoder value
 
- 
-    // process incoming serial from Monomes
-    for (int i = 0; i < MONOMEDEVICECOUNT; i++) {
-        monomeDevices[i].poll();
-        if (monomeDevices[i].gridEventAvailable()) {
-            MonomeGridEvent event = monomeDevices[i].readGridEvent();
-            
-            if (event.pressed) {
-                monomeDevices[i].setGridLed(event.x, event.y, 9);
-                
-                // note on
-                uint8_t note = event.x + (event.y << 4);
-                myNoteOn(midiChannel, note, 60);
-                Serial.print("Send MIDI note-on : ");
-                Serial.println(note);
-            } else {
-                monomeDevices[i].clearGridLed(event.x, event.y);
-    
-                // note off
-                uint8_t note = event.x + (event.y << 4);
-                myNoteOff(midiChannel, note, 0);
-                Serial.print("Send note-off: ");
-                Serial.println(note);
-            }
-            
-            monomeDevices[i].refreshGrid();
-        }
+         knobs[i] = encvalue;
+        //did an encoder move?
+        if (encvalue != 0) {
+          // write to monome
+          //writeInt(0x50); // send encoder delta
+          //writeInt(i);
+          //writeInt(constrain(encvalue, -127, 127));
 
-        if (monomeDevices[i].arcEventAvailable()) {
-            MonomeArcEvent event = monomeDevices[i].readArcEvent();
-            if (event.index < MONOMEARCENCOUDERCOUNT) {
-                arcValues[event.index] = (arcValues[event.index] + 64 + event.delta) & 63;
-                monomeDevices[i].clearArcRing(event.index);
-                monomeDevices[i].setArcLed(event.index, arcValues[event.index], 9);
-                monomeDevices[i].refreshArc();
-            }
-
-            myControlChange(1, event.index, event.delta);
-            Serial.print("ARC: ");
-            Serial.print(event.index);
-            Serial.print(" ");
-            Serial.print(event.delta);
-            Serial.print(" ");
-            Serial.println(arcValues[event.index]);
+			monomeDevices.addArcEvent(i, constrain(encvalue, -127, 127));
+          //addArcEvent(i, constrain(encvalue, -127, 127));
+         
+          // then reset encoder to 0
+          encoders[i]->write(0); 
         }
-    }
-    
 
   } // END FOR # ENCODERS LOOP
    
@@ -341,11 +304,15 @@ void loop() {
     u8g2.firstPage(); do{
      for (int j=0; j<4; j++){  // 1-4
         for (int q=0; q<64; q++){
-          if (led_array[j][q] > 0){
+        	//int k = led_array[j][q];
+        	int index = q + (j << 6);
+        	int k = monomeDevices.leds[index];
+          if (k > 0){
+
             u8g2.setDrawColor(1);
             DrawBox1((q*2), (j*15)+1, 2, 15); // draw white box
             u8g2.setDrawColor(2);
-            DrawBox1((q*2), (j*15)+1, 2, 16-led_array[j][q]); //
+            DrawBox1((q*2), (j*15)+1, 2, 16-k); //
             
             //led_array[j][q] = 0;          
           }
@@ -369,11 +336,13 @@ void loop() {
     u8g2_2.firstPage(); do{
      for (int j=4; j<8; j++){  // 4-8
         for (int q=0; q<64; q++){
-          if (led_array[j][q] > 0){
+	        int index = q + (j << 6);
+	        int k = monomeDevices.leds[index];
+          if (k > 0){
             u8g2_2.setDrawColor(1);
             DrawBox2((q*2), ((j-4)*15)+1, 2, 15); // draw white box
             u8g2_2.setDrawColor(2);
-            DrawBox2((q*2), ((j-4)*15)+1, 2, 16-led_array[j][q]); //      
+            DrawBox2((q*2), ((j-4)*15)+1, 2, 16-k); //      
           }
         }
         if (buttonval[j]){
@@ -384,7 +353,7 @@ void loop() {
 
 
     if (monomeRefresh > 50) {
-        for (int i = 0; i < MONOMEDEVICECOUNT; i++) monomeDevices[i].refresh();
+        for (int i = 0; i < MONOMEDEVICECOUNT; i++) monomeDevices.refresh();
         monomeRefresh = 0;
     }
    

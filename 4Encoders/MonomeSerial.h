@@ -25,9 +25,10 @@ class MonomeEventQueue {
         bool arcEventAvailable();
         MonomeArcEvent readArcEvent();
         
-    protected:
         void addGridEvent(uint8_t x, uint8_t y, uint8_t pressed);
         void addArcEvent(uint8_t index, int8_t delta);
+
+    protected:
         
     private:
         static const int MAXEVENTCOUNT = 50;
@@ -57,15 +58,16 @@ class MonomeSerial : public MonomeEventQueue {
         void clearArcRing(uint8_t ring);
         void refreshGrid();
         void refreshArc();
-        
-    private : 
+
         static const int MAXLEDCOUNT = 512;
         uint8_t leds[MAXLEDCOUNT];
+        MonomeSerial();
+        
+    private : 
         bool arcDirty = false;
         bool gridDirty = false;
 
         void processSerial();
-        MonomeSerial();
 };
 
 #endif
