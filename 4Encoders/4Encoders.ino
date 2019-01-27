@@ -14,16 +14,24 @@
 #include <Encoder.h>
 #include <Bounce.h>
 // #include <MIDI.h>
+#include "MonomeSerial.h"
+
 
 #ifdef U8X8_HAVE_HW_SPI
-#include <SPI.h>
+	#include <SPI.h>
 #endif
 #ifdef U8X8_HAVE_HW_I2C
-#include <i2c_t3.h>
+	#include <i2c_t3.h>
 #endif
 
 // 1x8 or 2x4 expander
 bool VERTICAL = false; // 2x4 configuration
+
+#define MONOMEDEVICECOUNT 2
+#define MONOMEARCENCOUDERCOUNT 8
+
+elapsedMillis monomeRefresh;
+int arcValues[MONOMEARCENCOUDERCOUNT];
 
 
 #define PIN_1 15  // 0
@@ -70,8 +78,11 @@ bool VERTICAL = false; // 2x4 configuration
 bool isMonome = true;
 bool isMIDI = false;
 
+
+// i2c ADDR for oled diplays
 byte adr1 = (0x3D *2); //display is 0x3D
 byte adr2 = (0x3C *2); //display 2 is 0x3C
+
 // U8g2 Contructor
 U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
@@ -129,7 +140,7 @@ Bounce *buttons[numberButtons] {
 
 //MIDI ONLY
 // SET CC NUMBERS FOR EACH ENCODER
-int encoderCCs[] {16,17,18,19};
+int encoderCCs[]{ 16, 17, 18, 19, 20, 21, 22, 23 };
 
 static uint8_t led_array[numberEncoders][64];
 
@@ -202,224 +213,7 @@ int encoderVelocity(int enc_id, int enc_val, int multiplier, int stepSize, int p
      return returnVal*changevalue;
 }
 
-void writeInt(uint8_t value) {
-   Serial.write(value);           // standard is to write out the 8 bit value on serial
-}
-uint8_t readInt() {
-  uint8_t val = Serial.read();
-//  Serial4.write(val); // send to serial 4 pins for debug
-  return val; 
-}
 
-void processSerial() {
-  uint8_t identifierSent;                     // command byte sent from controller to matrix
-  uint8_t deviceAddress;                      // device address sent from controller
-  uint8_t dummy;                              // for reading in data not used by the matrix
-  uint8_t intensity = 15;                     // default full led intensity
-  uint8_t readX, readY, readN, readA;                       // x and y values read from driver
-  uint8_t i, x, y, z;
-
-
-  identifierSent = Serial.read();             // get command identifier: first byte of packet is identifier in the form: [(a << 4) + b]
-                                              // a = section (ie. system, key-grid, digital, encoder, led grid, tilt)
-                                              // b = command (ie. query, enable, led, key, frame)
-  
-  //Serial4.write(identifierSent);    // send to serial 4 pins for debug                  
-  
-  // monome serial protocol documentation: https://monome.org/docs/serial.txt
-  
-  switch (identifierSent) {
-    case 0x00:                                // system/query - bytes: 1 - [0x00]
-      writeInt((uint8_t)0x00);                // action: response, 0x00
-      writeInt((uint8_t)0x01);                // id?
-      writeInt((uint8_t)0x01);                // id response?
-      break;
-
-    case 0x01:                                // system / query ID - bytes: 1 - [0x01]
-      writeInt((uint8_t)0x01);                // action: response, 0x01
-       
-      for (i = 0; i < 32; i++) {              // has to be 32
-        if (i < deviceID.length()) {
-          Serial.print(deviceID[i]);
-        } 
-        else {
-          Serial.print('\0');
-        }
-      }
-      
-      break;
-
-    case 0x02:                                // system / write ID - bytes: 33 - [0x02, d0..31]
-      for (i = 0; i < 32; i++) {
-        deviceID[i] = Serial.read();          // write ID (text string)
-      }                                       // response: confirms written id, 0x01
-      break;
-
-    case 0x03:
-      writeInt((uint8_t)0x02);                // system / request grid offset - bytes: 1 - [0x03]
-      // writeInt(0);                         // 
-      //writeInt((uint8_t)0x00);                // 
-      //writeInt((uint8_t)0x00);                // action: response, 0x02
-      break;
-
-    case 0x04:                                // system / set grid offset - bytes: 4 - [0x04, n, x, y]
-      dummy = readInt();                      // grid number
-      readX = readInt();                      // x offset - an offset of 8 is valid only for 16 x 8 monome
-      readY = readInt();                      // y offset - an offset is invalid for y as it's only 8
-      //if(NUM_KEYS > 64 && readX == 8) offsetX = 8; 
-      break;
-
-    case 0x05:
-      writeInt((uint8_t)0x03);                // system / request grid size
-      writeInt(0);
-      writeInt(0);
-      break;
-
-    case 0x06:
-      readX = readInt();                      // system / set grid size - ignored
-      readY = readInt();
-      break;
-
-    case 0x07:
-      break;                                  // I2C get addr (scan) - ignored
-
-    case 0x08:
-      deviceAddress = readInt();              // I2C set addr - ignored
-      dummy = readInt();
-      break;
-
-    case 0x0F:
-      writeInt((uint8_t)0x0F);                // query firmware version
-      //Serial.print(serialNum);
-      
-      break;
-
-    // 0x5x are encoder inputs // not doing anything here since we dont really need to update encoder position
-    
-    case 0x50:    // /prefix/enc/delta n d
-      //bytes: 3
-      //structure: [0x50, n, d]
-      //n = encoder number
-      //  0-255
-      //d = delta
-      //  (-128)-127 (two's comp 8 bit)
-      //description: encoder position change
-      break;
-      
-    case 0x51:    // /prefix/enc/key n d (d=0 key up)
-      //bytes: 2
-      //structure: [0x51, n]
-      //n = encoder number
-      //  0-255
-      //description: encoder switch up
-      break;
-      
-    case 0x52:    // /prefix/enc/key n d (d=1 key down)
-      //bytes: 2
-      //structure: [0x52, n]
-      //n = encoder number
-      //  0-255
-      //description: encoder switch down
-      break;
-
-    // 0x6x are analog in, 0x70 are analog out
-    // 0x80 are tilt
-    
-    // 0x90 variable 64 LED ring 
-    case 0x90:
-      //pattern:  /prefix/ring/set n x a
-      //desc:   set led x of ring n to value a
-      //args:   n = ring number
-      //      x = led number
-      //      a = value (0-15)
-      //serial:   [0x90, n, x, a]
-      readN = readInt();
-      readX = readInt();
-      readA = readInt();
-      led_array[readN][readX] = readA;
-      break;
-     
-    case 0x91:
-      //pattern:  /prefix/ring/all n a
-      //desc:   set all leds of ring n to a
-      //args:   n = ring number
-      //      a = value
-      //serial:   [0x91, n, a]
-      readN = readInt();
-      readA = readInt();
-      for (int q=0; q<64; q++){
-        led_array[readN][q]=readA;
-      }
-      break;
-      
-    case 0x92:
-      //pattern:  /prefix/ring/map n d[32]
-      //desc:   set leds of ring n to array d
-      //args:   n = ring number
-      //      d[32] = 64 states, 4 bit values, in 32 consecutive bytes
-      //      d[0] (0:3) value 0
-      //      d[0] (4:7) value 1
-      //      d[1] (0:3) value 2
-      //      ....
-      //      d[31] (0:3) value 62
-      //      d[31] (4:7) value 63
-      //serial:   [0x92, n d[32]]
-      readN = readInt();
-      for (y = 0; y < 64; y++) {
-          if (y % 2 == 0) {                    
-            intensity = readInt();
-            if ( (intensity >> 4 & 0x0F) > 0) {  // even bytes, use upper nybble
-              led_array[readN][y] = (intensity >> 4 & 0x0F);
-            }
-            else {
-              led_array[readN][y]=0;
-            }
-          } else {                              
-            if ((intensity & 0x0F) > 0 ) {      // odd bytes, use lower nybble
-              led_array[readN][y] = (intensity & 0x0F);
-            }
-            else {
-              led_array[readN][y]=0;
-            }
-          }
-      }
-      break;
-
-    case 0x93:
-      //pattern:  /prefix/ring/range n x1 x2 a
-      //desc:   set leds inclusive from x1 and x2 of ring n to a
-      //args:   n = ring number
-      //      x1 = starting position
-      //      x2 = ending position
-      //      a = value
-      //serial:   [0x93, n, x1, x2, a]
-      readN = readInt();
-      readX = readInt();  // x1
-      readY = readInt();  // x2
-      readA = readInt();
-      memset(led_array[readN],0,sizeof(led_array[readN]));
-      
-      if (readX < readY){
-        for (y = readX; y < readY; y++) {
-          led_array[readN][y] = readA;
-        }
-      }else{
-        // wrapping?
-        for (y = readX; y < 64; y++) {
-          led_array[readN][y] = readA;
-        }
-        for (x = 0; x < readY; x++) {
-          led_array[readN][x] = readA;
-        }
-      }
-      //note:   set range x1-x2 (inclusive) to a. wrapping supported, ie. set range 60,4 would set values 60,61,62,63,0,1,2,3,4. 
-      // always positive direction sweep. ie. 4,10 = 4,5,6,7,8,9,10 whereas 10,4 = 10,11,12,13...63,0,1,2,3,4 
-     break;
- 
-    default:
-      break;
-    }
-}
 // SETUP
 void setup() {
   // setup buttons
@@ -427,39 +221,46 @@ void setup() {
   pinMode(PIN_2, INPUT_PULLUP);
   pinMode(PIN_3, INPUT_PULLUP);
   pinMode(PIN_4, INPUT_PULLUP);
+  
   pinMode(PIN_5, INPUT_PULLUP); //INPUT_PULLUP
   pinMode(PIN_6, INPUT_PULLUP);
   pinMode(PIN_7, INPUT_PULLUP);
   pinMode(PIN_8, INPUT_PULLUP);
-/*
-  pinMode(ENC1A,INPUT);
-  pinMode(ENC1B,INPUT);
-  pinMode(ENC2A,INPUT);
-  pinMode(ENC2B,INPUT);
-  pinMode(ENC3A,INPUT);
-  pinMode(ENC3B,INPUT);
-  pinMode(ENC4A,INPUT);
-  pinMode(ENC4B,INPUT);
-*/
-  Serial.begin(115200);
+
+	Serial.begin(115200);
 //  Serial4.begin(115200); // send to serial 4 pins for debug
   
-//  MIDI.begin(midiChannel);
-  u8g2.setI2CAddress(adr1);
-  u8g2_2.setI2CAddress(adr2);
-  u8g2.begin();
-  u8g2_2.begin();
+
+    // USB MIDI
+    usbMIDI.setHandleNoteOn(myNoteOn);
+    usbMIDI.setHandleNoteOff(myNoteOff);
+    usbMIDI.setHandleControlChange(myControlChange);
+
+	//u8g2
+	u8g2.setI2CAddress(adr1);
+	u8g2_2.setI2CAddress(adr2);
+	u8g2.begin();
+	u8g2_2.begin();
   
-  //Serial.println("Encoders:");
+	//Serial.println("Encoders:");
 
 } //END SETUP
 
 // LOOP
 void loop() {
-  // flip display
+  	// flip display
     //u8g2.setDisplayRotation(U8G2_R2);
     //u8g2.setFlipMode(0);
 
+    // Read USB MIDI
+    while (usbMIDI.read()) {
+        // controllers must call .read() to keep the queue clear even if they
+        // are not responding to MIDI
+        activity = true;
+    }
+
+
+/*
   // FOR # BUTTONS LOOP
   for (byte z = 0; z < numberButtons; z++) {
     buttons[z]->update();
@@ -482,69 +283,60 @@ void loop() {
       //Serial.println(" pressed" );
     }
   } // END FOR # BUTTONS LOOP
+*/
 
   // START FOR # ENCODERS LOOP
   for (byte i = 0; i < numberEncoders; i++) {
     int encvalue = encoders[i]->read();    // read encoder value
 
-    // if MIDI 
+ 
+    // process incoming serial from Monomes
+    for (int i = 0; i < MONOMEDEVICECOUNT; i++) {
+        monomeDevices[i].poll();
+        if (monomeDevices[i].gridEventAvailable()) {
+            MonomeGridEvent event = monomeDevices[i].readGridEvent();
+            
+            if (event.pressed) {
+                monomeDevices[i].setGridLed(event.x, event.y, 9);
+                
+                // note on
+                uint8_t note = event.x + (event.y << 4);
+                myNoteOn(midiChannel, note, 60);
+                Serial.print("Send MIDI note-on : ");
+                Serial.println(note);
+            } else {
+                monomeDevices[i].clearGridLed(event.x, event.y);
     
-    if (isMIDI) {
-      //Serial.println("is midi");
-      // reset enc to 0 or 127 if out of range
-      if (encvalue < 0) {
-          encoders[i]->write(0);
-          encvalue = 0;
-      }
-      if (encvalue > 127) {
-          encoders[i]->write(127);
-          encvalue = 127;
-      }
-      
-      //did an encoder move?
-      if (encvalue != encposition[i]) {
-        Serial.print("Encoder changed: ");
-        Serial.print(encoderCCs[i]);
-        Serial.print("=");
-        Serial.print(encvalue);
-        Serial.println();
-        encposition[i] = knobs[i];
-  
-        // send MIDI
-        // usbMIDI.sendControlChange(encoderCCs[i], constrain(encvalue, 0, 127), midiChannel);
-      }
-    }
-    
-    // if MONOME 
-    
-    if (isMonome) {
-         knobs[i] = encvalue;
-        
-        //did an encoder move?
-        if (encvalue != 0) {
-          
-          int thisknob = encoderVelocity(i, encvalue, _multiplier, _stepSize, _pauseLength);
-          // this function is crap?
-          
-          //knobs[i] = encvalue;
-          //Serial.print("Enc ");
-          //Serial.print(i);
-          //Serial.print(" = ");
-          //Serial.print(knobs[i]);
-          //Serial.println();
-          
-          // do stuff
-          
-          // write to libmonome
-          writeInt(0x50); // send encoder delta
-          writeInt(i);
-          writeInt(constrain(encvalue, -127, 127));
-         
-          // then reset encoder to 0
-          encoders[i]->write(0); 
+                // note off
+                uint8_t note = event.x + (event.y << 4);
+                myNoteOff(midiChannel, note, 0);
+                Serial.print("Send note-off: ");
+                Serial.println(note);
+            }
+            
+            monomeDevices[i].refreshGrid();
+        }
 
+        if (monomeDevices[i].arcEventAvailable()) {
+            MonomeArcEvent event = monomeDevices[i].readArcEvent();
+            if (event.index < MONOMEARCENCOUDERCOUNT) {
+                arcValues[event.index] = (arcValues[event.index] + 64 + event.delta) & 63;
+                monomeDevices[i].clearArcRing(event.index);
+                monomeDevices[i].setArcLed(event.index, arcValues[event.index], 9);
+                monomeDevices[i].refreshArc();
+            }
+
+            myControlChange(1, event.index, event.delta);
+            Serial.print("ARC: ");
+            Serial.print(event.index);
+            Serial.print(" ");
+            Serial.print(event.delta);
+            Serial.print(" ");
+            Serial.println(arcValues[event.index]);
         }
     }
+    
+
   } // END FOR # ENCODERS LOOP
    
    // draw stuff to i2c display
@@ -593,11 +385,51 @@ void loop() {
     } while ( u8g2_2.nextPage() );
       
 
-   if (Serial.available() > 0) {
-      do { processSerial();  } 
-      while (Serial.available() > 16);
+
+    if (monomeRefresh > 50) {
+        for (int i = 0; i < MONOMEDEVICECOUNT; i++) monomeDevices[i].refresh();
+        monomeRefresh = 0;
     }
    
    //delay(1); // do we need to delay?
    
 } //END LOOP
+
+
+// MIDI NOTE/CC HANDLERS
+
+void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
+    // When using MIDIx4 or MIDIx16, usbMIDI.getCable() can be used
+    // to read which of the virtual MIDI cables received this message.
+    usbMIDI.sendNoteOn(note, velocity, channel);
+
+    Serial.print("Note On, ch=");
+    Serial.print(channel, DEC);
+    Serial.print(", note=");
+    Serial.print(note, DEC);
+    Serial.print(", velocity=");
+    Serial.println(velocity, DEC);
+}
+
+void myNoteOff(uint8_t channel, uint8_t note, uint8_t velocity) {
+    usbMIDI.sendNoteOff(note, 0, channel);
+
+    Serial.print("Note Off, ch=");
+    Serial.print(channel, DEC);
+    Serial.print(", note=");
+    Serial.print(note, DEC);
+    Serial.print(", velocity=");
+    Serial.println(velocity, DEC);
+
+}
+
+void myControlChange(byte channel, byte control, byte value) {
+    usbMIDI.sendControlChange(control, value, channel);
+
+    Serial.print("Control Change, ch=");
+    Serial.print(channel, DEC);
+    Serial.print(", control=");
+    Serial.print(control, DEC);
+    Serial.print(", value=");
+    Serial.println(value, DEC);
+}
