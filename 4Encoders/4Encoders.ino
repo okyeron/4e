@@ -7,6 +7,8 @@
  *  
  *  or use for MIDI stuff like CC's 
  *  
+ *  PIN ASSIGNMENTS UPDATED FOR v4 board
+ *  
  */
 
 #include <Arduino.h>
@@ -27,7 +29,7 @@ bool VERTICAL = false; // 2x4 configuration
 
 
 #define PIN_1 15  // 0
-#define PIN_2 12  // 3
+#define PIN_2 23  // 3
 #define PIN_3 9  // 20
 #define PIN_4 6  // 33
 #define PIN_5 3
@@ -40,7 +42,7 @@ bool VERTICAL = false; // 2x4 configuration
 // swap A/B to reverse encoder direction
 #define ENC1A 16  // 5
 #define ENC1B 17  // 4
-#define ENC2A 30  // 2
+#define ENC2A 12  // 2
 #define ENC2B 14  // 1
 #define ENC3A 10  // 22
 #define ENC3B 11  // 21
@@ -70,8 +72,8 @@ bool VERTICAL = false; // 2x4 configuration
 bool isMonome = true;
 bool isMIDI = false;
 
-byte adr1 = (0x3D *2); //display is 0x3D
-byte adr2 = (0x3C *2); //display 2 is 0x3C
+byte adr2 = (0x3D *2); //display 2 is 0x3D
+byte adr1 = (0x3C *2); //display 1 is 0x3C
 // U8g2 Contructor
 U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
