@@ -91,7 +91,7 @@ const byte midiChannel = 1;       // The MIDI Channel to send the commands over
 // MIDI_CREATE_DEFAULT_INSTANCE();
 
 // DONT CHANGE THIS
-String deviceID  = "monome arc";
+String deviceID  = "monome-arc";
 
 // HOW MANY ENCODERS?
 const byte numberEncoders = 8;   // The number of encoders
@@ -233,19 +233,20 @@ void processSerial() {
   switch (identifierSent) {
     case 0x00:                                // system/query - bytes: 1 - [0x00]
       writeInt((uint8_t)0x00);                // action: response, 0x00 = system
-      writeInt((uint8_t)0x02);                // id, 5 = encoder
-      writeInt((uint8_t)8);                   // devNum - number of quads or encoders
+      writeInt((uint8_t)0x05);                // id, 5 = encoder
+      writeInt((uint8_t)numberEncoders);      // devNum - number of quads or encoders
       break;
 
-    case 0x01:                                // system / query ID - bytes: 1 - [0x01]
+    case 0x01:                                // system / send ID - bytes: 1 - [0x01]
       writeInt((uint8_t)0x01);                // action: response, 0x01
        
       for (i = 0; i < 32; i++) {              // has to be 32
         if (i < deviceID.length()) {
-          Serial.print(deviceID[i]);
+          Serial.write(deviceID[i]);
         } 
         else {
-          Serial.print('\0');
+          //Serial.write((byte)0x30);
+          Serial.write(' ');
         }
       }
       
