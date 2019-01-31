@@ -232,9 +232,9 @@ void processSerial() {
   
   switch (identifierSent) {
     case 0x00:                                // system/query - bytes: 1 - [0x00]
-      writeInt((uint8_t)0x00);                // action: response, 0x00
-      writeInt((uint8_t)0x01);                // id?
-      writeInt((uint8_t)0x01);                // id response?
+      writeInt((uint8_t)0x00);                // action: response, 0x00 = system
+      writeInt((uint8_t)0x02);                // id, 5 = encoder
+      writeInt((uint8_t)8);                   // devNum - number of quads or encoders
       break;
 
     case 0x01:                                // system / query ID - bytes: 1 - [0x01]
