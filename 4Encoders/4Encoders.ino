@@ -236,9 +236,13 @@ void setup() {
 	u8g2.begin();
 	u8g2_2.begin();
   
-	//Serial.println("Encoders:");
+	Serial.println("--4Encoders--");
 
-} //END SETUP
+  monomeDevices.getDeviceInfo();
+
+} 
+//END SETUP
+
 
 // LOOP
 void loop() {
@@ -282,7 +286,7 @@ void loop() {
   for (byte i = 0; i < numberEncoders; i++) {
     int encvalue = encoders[i]->read();    // read encoder value
 
-         knobs[i] = encvalue;
+      knobs[i] = encvalue;
         //did an encoder move?
         if (encvalue != 0) {
           // write to monome
@@ -290,7 +294,8 @@ void loop() {
           //writeInt(i);
           //writeInt(constrain(encvalue, -127, 127));
 
-			monomeDevices.addArcEvent(i, constrain(encvalue, -127, 127));
+			    monomeDevices.addArcEvent(i, constrain(encvalue, -127, 127));
+          Serial.println(constrain(encvalue, -127, 127));
           //addArcEvent(i, constrain(encvalue, -127, 127));
          
           // then reset encoder to 0

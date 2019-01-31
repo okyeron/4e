@@ -141,22 +141,28 @@ void MonomeSerial::refresh() {
 }
 
 void MonomeSerial::poll() {
-    if (Serial.available()) {
-        do { processSerial(); } while (Serial.available() > 16);
-    }
+  while (Serial.available()) processSerial();
+}
+void MonomeSerial::getDeviceInfo() {
+    Serial.write(uint8_t(0x00));
+    poll();
+    Serial.write(0x01);
+    poll();
 }
 
+
 void MonomeSerial::processSerial() {
-	String deviceID  = "monome arc";
+    Serial.println("process serial");
+	  String deviceID  = "monomearc";
 
     uint8_t identifierSent;  // command byte sent from controller to matrix
     uint8_t gridNum, dummy;  // for reading in data not used by the matrix
     uint8_t readX, readY, readN, readA;    // x and y values read from driver
     uint8_t index, n, x, y, i, deviceAddress;
     uint8_t intensity = 15;
-    int8_t delta;
     uint8_t gridKeyX;
     uint8_t gridKeyY;
+    int8_t delta;
     
     identifierSent = Serial.read();  // get command identifier: first byte
                               // of packet is identifier in the form:
@@ -165,64 +171,64 @@ void MonomeSerial::processSerial() {
     // b = command (ie. query, enable, led, key, frame)
     switch (identifierSent) {
         case 0x00:  // device information
-            // Serial.println("0x00");
+            Serial.println("0x00");
             Serial.write(0x00);	// action: response, 0x00 = system
             Serial.write(0x05);	// id, 5 = encoder
-            Serial.write((uint8_t)numberEncoders);	// id response?
+            Serial.write((uint8_t)8);	// how many encoders?
 
             break;
 
         case 0x01:  // system / ID
-            // Serial.println("0x01");
-            Serial.write(0x01);		// action: response, 0x01
-			for (i = 0; i < 32; i++) {              // has to be 32
-				if (i < deviceID.length()) {
-				  Serial.write(deviceID[i]);
-				} 
-				else {
-				  Serial.write(' ');
-				}
-			}
+            Serial.write(0x01);		            // action: response, 0x01
+      			for (i = 0; i < 32; i++) {        // has to be 32
+      				if (i < deviceID.length()) {
+      				  Serial.write(deviceID[i]);
+      				} 
+      				else {
+      				  Serial.write('\0');
+      				}
+      			}
             break;
 
-        case 0x02:  // system / report grid offset - 4 bytes
-            // Serial.println("0x02");
+        case 0x02:  // system / report offset - 4 bytes
+            Serial.println("0x02");
             for (int i = 0; i < 32; i++) {  // has to be 32
                 Serial.print(Serial.read());
             }
             break;
 
-        case 0x03:  // system / report grid size
-            // Serial.println("0x03");
+        case 0x03:  // system / report size
+            Serial.println("0x03");
             Serial.write(0x02);		// system / request grid offset - bytes: 1 - [0x03]
             
             break;
 
         case 0x04:  // system / report ADDR
-            // Serial.println("0x04");
+            Serial.println("0x04");
             gridNum = Serial.read();  	// grid number
             readX = Serial.read();  	// x offset
-			readY = Serial.read();  	// y offset
+      			readY = Serial.read();  	// y offset
             break;
 
-		case 0x05:
-		  Serial.write(0x03);          // system / request grid size
-		  Serial.write(0);
-		  Serial.write(0);
-		  break;
-
-		case 0x06:
-		  readX = Serial.read();       // system / set grid size - ignored
-		  readY = Serial.read();
-		  break;
-
-		case 0x07:
-		  break;                      // I2C get addr (scan) - ignored
-
-		case 0x08:
-		  deviceAddress = Serial.read();     // I2C set addr - ignored
-		  dummy = Serial.read();
-		  break;
+    		case 0x05:
+          Serial.println("0x05");
+    		  Serial.write(0x03);          // system / request grid size
+    		  Serial.write(0);
+    		  Serial.write(0);
+    		  break;
+    
+    		case 0x06:
+    		  readX = Serial.read();       // system / set grid size - ignored
+    		  readY = Serial.read();
+    		  break;
+    
+    		case 0x07:
+    		  break;                      // I2C get addr (scan) - ignored
+    
+    		case 0x08:
+    		  deviceAddress = Serial.read();     // I2C set addr - ignored
+    		  dummy = Serial.read();
+    		  break;
 
 
         case 0x0F:  // system / report firmware version

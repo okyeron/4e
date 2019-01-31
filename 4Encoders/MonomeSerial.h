@@ -58,6 +58,7 @@ class MonomeSerial : public MonomeEventQueue {
         void clearArcRing(uint8_t ring);
         void refreshGrid();
         void refreshArc();
+        void getDeviceInfo();
 
         static const int MAXLEDCOUNT = 512;
         uint8_t leds[MAXLEDCOUNT];
