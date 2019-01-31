@@ -166,19 +166,10 @@ void MonomeSerial::processSerial() {
     switch (identifierSent) {
         case 0x00:  // device information
             // Serial.println("0x00");
-            //devSect = Serial.read(); // system/query response 0x00 -> 0x00
-            //devNum = Serial.read();  // grids
-            Serial.write(0x00);	// action: response, 0x00
-            Serial.write(0x01);	// id?
-            Serial.write(0x01);	// id response?
-            
-            /*
-            Serial.print("section: ");
-            Serial.print(devSect);
-            Serial.print(", number: ");
-            Serial.print(devNum);
-            Serial.println(" ");
-            */
+            Serial.write(0x00);	// action: response, 0x00 = system
+            Serial.write(0x05);	// id, 5 = encoder
+            Serial.write((uint8_t)numberEncoders);	// id response?
+
             break;
 
         case 0x01:  // system / ID
@@ -186,10 +177,10 @@ void MonomeSerial::processSerial() {
             Serial.write(0x01);		// action: response, 0x01
 			for (i = 0; i < 32; i++) {              // has to be 32
 				if (i < deviceID.length()) {
-				  Serial.print(deviceID[i]);
+				  Serial.write(deviceID[i]);
 				} 
 				else {
-				  Serial.print('\0');
+				  Serial.write(' ');
 				}
 			}
             break;
