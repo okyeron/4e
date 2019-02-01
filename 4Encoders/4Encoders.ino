@@ -222,7 +222,7 @@ void setup() {
 	  pinMode(PIN_7, INPUT_PULLUP);
 	  pinMode(PIN_8, INPUT_PULLUP);
 
-	Serial.begin(115200);
+	  Serial.begin(115200);
 //  Serial4.begin(115200); // send to serial 4 pins for debug
   
     // USB MIDI
@@ -230,15 +230,15 @@ void setup() {
     usbMIDI.setHandleNoteOff(myNoteOff);
     usbMIDI.setHandleControlChange(myControlChange);
 
-	//u8g2
-	u8g2.setI2CAddress(adr1);
-	u8g2_2.setI2CAddress(adr2);
-	u8g2.begin();
-	u8g2_2.begin();
+  	//u8g2
+  	u8g2.setI2CAddress(adr1);
+  	u8g2_2.setI2CAddress(adr2);
+  	u8g2.begin();
+  	u8g2_2.begin();
+    
+  	Serial.println("--4Encoders--");
   
-	Serial.println("--4Encoders--");
-
-  monomeDevices.getDeviceInfo();
+    monomeDevices.getDeviceInfo();
 
 } 
 //END SETUP
@@ -283,6 +283,7 @@ void loop() {
 */
 
   // START FOR # ENCODERS LOOP
+  
   for (byte i = 0; i < numberEncoders; i++) {
     int encvalue = encoders[i]->read();    // read encoder value
 
@@ -290,12 +291,9 @@ void loop() {
         //did an encoder move?
         if (encvalue != 0) {
           // write to monome
-          //writeInt(0x50); // send encoder delta
-          //writeInt(i);
-          //writeInt(constrain(encvalue, -127, 127));
-
-			    monomeDevices.addArcEvent(i, constrain(encvalue, -127, 127));
-          Serial.println(constrain(encvalue, -127, 127));
+ 
+			    monomeDevices.sendArcDelta(i, constrain(encvalue, -127, 127));
+          //Serial.println(constrain(encvalue, -127, 127));
           //addArcEvent(i, constrain(encvalue, -127, 127));
          
           // then reset encoder to 0
@@ -303,7 +301,9 @@ void loop() {
         }
 
   } // END FOR # ENCODERS LOOP
-   
+  
+  monomeDevices.poll();
+  
    // draw stuff to i2c display
     
     u8g2.firstPage(); do{
@@ -361,8 +361,7 @@ void loop() {
         for (int i = 0; i < MONOMEDEVICECOUNT; i++) monomeDevices.refresh();
         monomeRefresh = 0;
     }
-   
-   //delay(1); // do we need to delay?
+
    
 } //END LOOP
 

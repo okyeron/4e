@@ -24,9 +24,13 @@ class MonomeEventQueue {
 
         bool arcEventAvailable();
         MonomeArcEvent readArcEvent();
-        
+        MonomeArcEvent sendArcDelta();
+        MonomeArcEvent sendArcKey();
+       
         void addGridEvent(uint8_t x, uint8_t y, uint8_t pressed);
         void addArcEvent(uint8_t index, int8_t delta);
+        void sendArcDelta(uint8_t index, int8_t delta);
+        void sendArcKey(uint8_t index, int8_t pressed);
 
     protected:
         
@@ -46,7 +50,7 @@ class MonomeEventQueue {
 
 class MonomeSerial : public MonomeEventQueue {
     public: 
-        //MonomeSerial(USBHost usbHost);
+        MonomeSerial();
         void poll();
         void refresh();
 
@@ -62,12 +66,13 @@ class MonomeSerial : public MonomeEventQueue {
 
         static const int MAXLEDCOUNT = 512;
         uint8_t leds[MAXLEDCOUNT];
-        MonomeSerial();
+
         
     private : 
         bool arcDirty = false;
         bool gridDirty = false;
-
+        
+//        MonomeSerial();
         void processSerial();
 };
 
