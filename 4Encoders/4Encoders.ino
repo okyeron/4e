@@ -232,6 +232,7 @@ void processSerial() {
   
   switch (identifierSent) {
     case 0x00:                                // system/query - bytes: 1 - [0x00]
+      //Serial.println("0x00 system / query ---------------------- ");
       writeInt((uint8_t)0x00);                // action: response, 0x00 = system
       writeInt((uint8_t)0x05);                // id, 5 = encoder
       writeInt((uint8_t)numberEncoders);      // devNum - number of quads or encoders
@@ -601,6 +602,5 @@ void loop() {
       while (Serial.available() > 16);
     }
    
-   //delay(1); // do we need to delay?
    
 } //END LOOP
