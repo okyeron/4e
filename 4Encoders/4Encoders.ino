@@ -183,32 +183,6 @@ void DrawBox2(uint8_t x, uint8_t y, uint8_t w, uint8_t h){
   u8g2_2.drawBox(x, y, w, h);
 }
 
-// AM I USING THIS?
-int encoderVelocity(int enc_id, int enc_val, int multiplier, int stepSize, int pauseLength) {
-    int returnVal = 0;
-    int changevalue = 1;
-    
-    if (enc_val > 0){
-      returnVal = 1;
-    } else if  (enc_val < 0){
-      returnVal = -1;
-    }
-    if(returnVal != 0) {
-      if(returnVal == _lastENCread[enc_id]) {
-        _ENCcounter[enc_id]++;
-        if((millis() - _lastENCreadTime[enc_id]) < _pauseLength) {
-          changevalue = max((_ENCcounter[enc_id]*_multiplier)/_stepSize,1);
-        }
-        _lastENCreadTime[enc_id] = millis();  
-      } else {
-        _ENCcounter[enc_id]=0;
-      }
-      _lastENCread[enc_id] = returnVal;
-     }
-     return returnVal*changevalue;
-}
-
-
 // SETUP
 void setup() {
 	  // setup buttons
@@ -226,10 +200,11 @@ void setup() {
 //  Serial4.begin(115200); // send to serial 4 pins for debug
   
     // USB MIDI
+/*       
     usbMIDI.setHandleNoteOn(myNoteOn);
     usbMIDI.setHandleNoteOff(myNoteOff);
     usbMIDI.setHandleControlChange(myControlChange);
-
+*/
   	//u8g2
   	u8g2.setI2CAddress(adr1);
   	u8g2_2.setI2CAddress(adr2);
@@ -238,7 +213,7 @@ void setup() {
     
   	Serial.println("--4Encoders--");
   
-    monomeDevices.getDeviceInfo();
+    //monomeDevices.getDeviceInfo();
 
 } 
 //END SETUP
@@ -251,11 +226,11 @@ void loop() {
     //u8g2.setFlipMode(0);
 
     // Read USB MIDI
-    while (usbMIDI.read()) {
+/*    while (usbMIDI.read()) {
         // controllers must call .read() to keep the queue clear even if they
         // are not responding to MIDI
     }
-
+*/
 
 /*
   // FOR # BUTTONS LOOP
@@ -286,24 +261,27 @@ void loop() {
   
   for (byte i = 0; i < numberEncoders; i++) {
     int encvalue = encoders[i]->read();    // read encoder value
+    knobs[i] = encvalue;
+    
+    //did an encoder move?
+    if (encvalue != 0) {
+      // write to monome
+      Serial.write(0x50);
+      Serial.write(i);
+      Serial.write(constrain(encvalue, -127, 127));
 
-      knobs[i] = encvalue;
-        //did an encoder move?
-        if (encvalue != 0) {
-          // write to monome
- 
-			    monomeDevices.sendArcDelta(i, constrain(encvalue, -127, 127));
-          //Serial.println(constrain(encvalue, -127, 127));
-          //addArcEvent(i, constrain(encvalue, -127, 127));
-         
-          // then reset encoder to 0
-          encoders[i]->write(0); 
-        }
+	    //monomeDevices.sendArcDelta(i, constrain(encvalue, -127, 127));
+      Serial.println(constrain(encvalue, -127, 127));
+     
+      // then reset encoder to 0
+      encoders[i]->write(0); 
+    }
 
   } // END FOR # ENCODERS LOOP
-  
-  monomeDevices.poll();
-  
+
+  // process incoming serial from Monomes
+    monomeDevices.poll();
+
    // draw stuff to i2c display
     
     u8g2.firstPage(); do{
@@ -365,7 +343,7 @@ void loop() {
    
 } //END LOOP
 
-
+/*
 // MIDI NOTE/CC HANDLERS
 
 void myNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
@@ -403,3 +381,4 @@ void myControlChange(byte channel, byte control, byte value) {
     Serial.print(", value=");
     Serial.println(value, DEC);
 }
+*/
