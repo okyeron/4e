@@ -25,10 +25,12 @@ class MonomeEventQueue {
         bool arcEventAvailable();
         MonomeArcEvent readArcEvent();
         MonomeArcEvent sendArcDelta();
+        MonomeArcEvent sendArcKey();
        
         void addGridEvent(uint8_t x, uint8_t y, uint8_t pressed);
         void addArcEvent(uint8_t index, int8_t delta);
         void sendArcDelta(uint8_t index, int8_t delta);
+        void sendArcKey(uint8_t index, uint8_t pressed);
 
     protected:
         

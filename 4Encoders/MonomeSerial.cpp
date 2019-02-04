@@ -6,52 +6,51 @@ MonomeSerial::MonomeSerial() {}
 void MonomeSerial::setGridLed(uint8_t x, uint8_t y, uint8_t level) {
     int index = x + (y << 4);
     if (index < MAXLEDCOUNT) leds[index] = level;
-    Serial.print("setGridLed");
+    //Serial.print("setGridLed");
 }
         
 void MonomeSerial::clearGridLed(uint8_t x, uint8_t y) {
     setGridLed(x, y, 0);
-    Serial.print("clearGridLed");
+    //Serial.print("clearGridLed");
 }
 
 void MonomeSerial::setArcLed(uint8_t enc, uint8_t led, uint8_t level) {
     int index = led + (enc << 6);
     if (index < MAXLEDCOUNT) leds[index] = level;
-    Serial.print("setArcLed");
+    //Serial.print("setArcLed");
 }
         
 void MonomeSerial::clearArcLed(uint8_t enc, uint8_t led) {
     setArcLed(enc, led, 0);
-    Serial.print("clearArcLed");
+    //Serial.print("clearArcLed");
 }
 
 void MonomeSerial::clearAllLeds() {
     for (int i = 0; i < MAXLEDCOUNT; i++) leds[i] = 0;
-    Serial.print("clearAllLeds");
+    //Serial.print("clearAllLeds");
 }
 
 void MonomeSerial::clearArcRing(uint8_t ring) {
     for (int i = ring << 6, upper = i + 64; i < upper; i++) leds[i] = 0;
-    Serial.print("clearArcRing");
+    //Serial.print("clearArcRing");
 }
 
 void MonomeSerial::refreshGrid() {
     gridDirty = true;
-    Serial.print("refreshGrid");
+    //Serial.print("refreshGrid");
 }
 
 void MonomeSerial::refreshArc() {
     arcDirty = true;
-    Serial.print("refreshArc");
+    //Serial.print("refreshArc");
 }
 
 void MonomeSerial::refresh() {
-    
     uint8_t buf[35];
     int ind, led;
 
     if (gridDirty) {
-        Serial.print("gridDirty");
+        //Serial.print("gridDirty");
         buf[0] = 0x1A;
         buf[1] = 0;
         buf[2] = 0;
@@ -96,7 +95,7 @@ void MonomeSerial::refresh() {
     }
 
     if (arcDirty) {
-        Serial.print("arcDirty");
+        //Serial.print("arcDirty");
         buf[0] = 0x92;
 
         buf[1] = 0;
@@ -152,22 +151,25 @@ void MonomeSerial::refresh() {
 }
 
 void MonomeSerial::poll() {
+  while (Serial.available()) processSerial();
+  /*
    if (Serial.available() > 0) {
       do { processSerial();  } 
       while (Serial.available() > 16);
     }
+  */
 }
 
 void MonomeSerial::getDeviceInfo() {
-    Serial.println("get device info");
+    //Serial.println("get device info");
 //    Serial.write(uint8_t(0));
 //    Serial.write(uint8_t(1));
     poll();
 }
 
 void MonomeSerial::processSerial() {
-	  String deviceID  = "monome arc";
-    Serial.println("processSerial");
+	String deviceID  = "monome arc";
+    //Serial.println("processSerial");
 
     uint8_t identifierSent;  // command byte sent from controller to matrix
     uint8_t gridNum, dummy;  // for reading in data not used by the matrix
@@ -185,7 +187,7 @@ void MonomeSerial::processSerial() {
     // b = command (ie. query, enable, led, key, frame)
     switch (identifierSent) {
         case 0x00:  // device information
-            Serial.println("0x00 system / query ----------------------");
+            //Serial.println("0x00 system / query ----------------------");
             Serial.write(0x00);	// action: response, 0x00 = system
             Serial.write(0x05);	// id, 5 = encoder
             Serial.write((uint8_t)8);	// how many encoders?
@@ -251,7 +253,7 @@ void MonomeSerial::processSerial() {
         case 0x0F:  // system / report firmware version
             // Serial.println("0x0F");
             for (int i = 0; i < 8; i++) {  // 8 character string
-                Serial.print(Serial.read());
+                //Serial.print(Serial.read());
             }
             break;
 
@@ -267,11 +269,11 @@ void MonomeSerial::processSerial() {
             gridKeyY = Serial.read();
             addGridEvent(gridKeyX, gridKeyY, 0);
             
-            Serial.print("grid key: ");
-            Serial.print(gridKeyX);
-            Serial.print(" ");
-            Serial.print(gridKeyY);
-            Serial.print(" up - ");
+            //Serial.print("grid key: ");
+            //Serial.print(gridKeyX);
+            //Serial.print(" ");
+            //Serial.print(gridKeyY);
+            //Serial.print(" up - ");
             break;
             
         case 0x21:
@@ -285,11 +287,11 @@ void MonomeSerial::processSerial() {
             gridKeyY = Serial.read();
             addGridEvent(gridKeyX, gridKeyY, 1);
 
-            Serial.print("grid key: ");
-            Serial.print(gridKeyX);
-            Serial.print(" ");
-            Serial.print(gridKeyY);
-            Serial.print(" dn - ");
+            //Serial.print("grid key: ");
+            //Serial.print(gridKeyX);
+            //Serial.print(" ");
+            //Serial.print(gridKeyY);
+            //Serial.print(" dn - ");
             
             break;
 
@@ -312,20 +314,20 @@ void MonomeSerial::processSerial() {
             delta = Serial.read();
             addArcEvent(index, delta);
 
-            Serial.print("Encoder: ");
-            Serial.print(index);
-            Serial.print(" : ");
-            Serial.print(delta);
-            Serial.println();
+            //Serial.print("Encoder: ");
+            //Serial.print(index);
+            //Serial.print(" : ");
+            //Serial.print(delta);
+            //Serial.println();
 
             break;
 
         case 0x51:  // /prefix/enc/key n (key up)
             // Serial.println("0x51");
             n = Serial.read();
-            Serial.print("key: ");
-            Serial.print(n);
-            Serial.println(" up");
+            //Serial.print("key: ");
+            //Serial.print(n);
+            //Serial.println(" up");
 
             // bytes: 2
             // structure: [0x51, n]
@@ -337,9 +339,9 @@ void MonomeSerial::processSerial() {
         case 0x52:  // /prefix/enc/key n (key down)
             // Serial.println("0x52");
             n = Serial.read();
-            Serial.print("key: ");
-            Serial.print(n);
-            Serial.println(" down");
+            //Serial.print("key: ");
+            //Serial.print(n);
+            //Serial.println(" down");
 
             // bytes: 2
             // structure: [0x52, n]
@@ -503,11 +505,11 @@ MonomeArcEvent MonomeEventQueue::readArcEvent() {
 }
 
 void MonomeEventQueue::sendArcDelta(uint8_t index, int8_t delta) {
-    Serial.print("Encoder:");
-    Serial.print(index);
-    Serial.print(" ");
-    Serial.print(delta);
-    Serial.println(" ");
+    //Serial.print("Encoder:");
+    //Serial.print(index);
+    //Serial.print(" ");
+    //Serial.print(delta);
+    //Serial.println(" ");
     Serial.write((uint8_t)0x50);
     Serial.write((uint8_t)index);
     Serial.write((int8_t)delta);
@@ -519,13 +521,13 @@ void MonomeEventQueue::sendArcDelta(uint8_t index, int8_t delta) {
     Serial.write(buf, sizeof(buf));
     */
 }
-/*
+
 void MonomeEventQueue::sendArcKey(uint8_t index, uint8_t pressed) {
 
-    Serial.print("key:");
-    Serial.print(index);
-    Serial.print(" ");
-    Serial.println(pressed);
+    //Serial.print("key:");
+    //Serial.print(index);
+    //Serial.print(" ");
+    //Serial.println(pressed);
     
     uint8_t buf[2];
     if (pressed == 1){
@@ -536,4 +538,3 @@ void MonomeEventQueue::sendArcKey(uint8_t index, uint8_t pressed) {
     buf[1] = index;
     Serial.write(buf, 2);
 }
-    */

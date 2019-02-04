@@ -232,30 +232,27 @@ void loop() {
     }
 */
 
-/*
   // FOR # BUTTONS LOOP
   for (byte z = 0; z < numberButtons; z++) {
     buttons[z]->update();
     if (buttons[z]->risingEdge()) { // release
-      //  do release things
-          // write to libmonome
-          writeInt(0x51); // send encoder key up
-          writeInt(z);
-      buttonval[z] = 0;
-      //Serial.print(z);
-      //Serial.println(" released" );
+      	//  do release things
+        // write to monome
+		    monomeDevices.sendArcKey(z, 0);
+        //writeInt(0x51); // send encoder key up
+        //writeInt(z);
+      	buttonval[z] = 0;
     }
     if (buttons[z]->fallingEdge()) {  // press
-      // do press things
-         // write to libmonome
-          writeInt(0x52); // send encoder key down
-          writeInt(z);
-      buttonval[z] = 1;
-      //Serial.print(z);
-      //Serial.println(" pressed" );
+      	// do press things
+        // write to monome
+		    monomeDevices.sendArcKey(z, 1);
+        //writeInt(0x52); // send encoder key down
+        //writeInt(z);
+      	buttonval[z] = 1;
     }
   } // END FOR # BUTTONS LOOP
-*/
+
 
   // START FOR # ENCODERS LOOP
   
@@ -266,12 +263,12 @@ void loop() {
     //did an encoder move?
     if (encvalue != 0) {
       // write to monome
-      Serial.write(0x50);
-      Serial.write(i);
-      Serial.write(constrain(encvalue, -127, 127));
+      //Serial.write(0x50);
+      //Serial.write(i);
+      //Serial.write(constrain(encvalue, -127, 127));
 
-	    //monomeDevices.sendArcDelta(i, constrain(encvalue, -127, 127));
-      Serial.println(constrain(encvalue, -127, 127));
+	    monomeDevices.sendArcDelta(i, constrain(encvalue, -127, 127));
+      //Serial.println(constrain(encvalue, -127, 127));
      
       // then reset encoder to 0
       encoders[i]->write(0); 
