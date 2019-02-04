@@ -90,8 +90,8 @@ U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 const byte midiChannel = 1;       // The MIDI Channel to send the commands over
 // MIDI_CREATE_DEFAULT_INSTANCE();
 
-// DONT CHANGE THIS
-String deviceID  = "monome-arc";
+// ***** DONT CHANGE THIS ******
+String deviceID  = "monome arc";
 
 // HOW MANY ENCODERS?
 const byte numberEncoders = 8;   // The number of encoders
@@ -235,7 +235,7 @@ void processSerial() {
       //Serial.println("0x00 system / query ---------------------- ");
       writeInt((uint8_t)0x00);                // action: response, 0x00 = system
       writeInt((uint8_t)0x05);                // id, 5 = encoder
-      writeInt((uint8_t)numberEncoders);      // devNum - number of quads or encoders
+      writeInt((uint8_t)4);      // devNum - number of quads or encoders
       break;
 
     case 0x01:                                // system / send ID - bytes: 1 - [0x01]
@@ -261,9 +261,9 @@ void processSerial() {
 
     case 0x03:
       writeInt((uint8_t)0x02);                // system / request grid offset - bytes: 1 - [0x03]
-      // writeInt(0);                         // 
-      //writeInt((uint8_t)0x00);                // 
-      //writeInt((uint8_t)0x00);                // action: response, 0x02
+      writeInt((uint8_t)0x01);                  
+      writeInt((uint8_t)0x00);                // 
+      writeInt((uint8_t)0x00);                // action: response, 0x02
       break;
 
     case 0x04:                                // system / set grid offset - bytes: 4 - [0x04, n, x, y]

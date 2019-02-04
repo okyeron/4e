@@ -4,7 +4,7 @@
 #define PRODUCT_NAME_LEN   10
 #define MANUFACTURER_NAME  {'m','o','n','o','m','e'}
 #define MANUFACTURER_NAME_LEN 6
-#define SERIAL_NUM  {'m','2','2','8','9','4','9','0'} //2289490
+#define SERIAL_NUM  {'m','2','2','8','9','4','9','1'} //2289491
 #define SERIAL_NUM_LEN 8
 
 struct usb_string_descriptor_struct usb_string_product_name = {
@@ -24,4 +24,3 @@ struct usb_string_descriptor_struct usb_string_serial_number = {
   3,
   SERIAL_NUM
 };
-
