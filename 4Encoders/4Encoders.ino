@@ -14,7 +14,7 @@
 #include <Encoder.h>
 #include <Bounce.h>
 // #include <MIDI.h>
-#include "MonomeSerial.h"
+#include "MonomeSerialDevice.h"
 
 
 #ifdef U8X8_HAVE_HW_SPI
